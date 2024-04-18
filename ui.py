@@ -1,40 +1,61 @@
 import tkinter as tk
-from tkinter import filedialog, scrolledtext
+from tkinter import filedialog, scrolledtext, ttk
 
 from translator import Translator
 
 
 class TranslationUI:
-    def __init__(self, translator):
-        self.translator = translator
+    def __init__(self):
         self.window = tk.Tk()
-        self.window.title("Translation Machine")
+        self.window.title("Claude 翻譯機")
+        self.window.geometry("800x600")
 
-        self.input_text = scrolledtext.ScrolledText(self.window, width=50, height=10)
-        self.input_text.pack(pady=10)
+        self.model = {
+            "Haiku": "claude-3-haiku-20240307",
+            "Sonnet": "claude-3-sonnet-20240229",
+            "Opus": "claude-3-opus-20240229",
+        }
 
-        self.translate_button = tk.Button(self.window, text="Translate", command=self.translate_text)
-        self.translate_button.pack(pady=5)
+        # Varaibles
+        self.input_file_path = tk.StringVar()
+        self.model_var = tk.StringVar()
+        self.model_var.set("Haiku")
+        self.to_language_var = tk.StringVar()
+        self.output_file_name = tk.StringVar()
 
-        self.output_text = scrolledtext.ScrolledText(self.window, width=50, height=10)
-        self.output_text.pack(pady=10)
-
-        self.select_file_button = tk.Button(self.window, text="Select File", command=self.select_file)
+        # input_file
+        self.select_file_button = tk.Button(self.window, text="選擇要翻譯的檔案", command=self.select_input_file)
         self.select_file_button.pack(pady=5)
+        file_entry = tk.Entry(self.window, textvariable=self.input_file_path, width=100)
+        file_entry.pack()
 
-    def translate_text(self):
-        input_text = self.input_text.get("1.0", tk.END)
-        translated_text = self.translator.translate(input_text, model="claude-3-haiku-20240307")
-        self.output_text.delete("1.0", tk.END)
-        self.output_text.insert(tk.END, translated_text)
+        # Model
+        self.model_dropdown = tk.OptionMenu(self.window, self.model_var, *(list(self.model.keys())))
+        self.model_dropdown.pack(pady=5)
 
-    def select_file(self):
-        file_path = filedialog.askopenfilename(title="Select File")
-        if file_path:
-            with open(file_path, "r", encoding="utf-8") as file:
-                input_text = file.read()
-            self.input_text.delete("1.0", tk.END)
-            self.input_text.insert(tk.END, input_text)
+        # To Language
+        self.language_choices = [
+            "Traditional Chinese",
+            "English",
+        ]
+        self.language_dropdown = ttk.Combobox(
+            self.window, textvariable=self.to_language_var, values=self.language_choices
+        )
+        self.language_dropdown.pack(pady=5)
+
+        # Start translate
+        self.start_btn = tk.Button(self.window, text="開始翻譯", command=self.translate)
+        self.start_btn.pack(pady=5)
+
+    def select_input_file(self):
+        file_path = filedialog.askopenfilename(title="選擇要翻譯的檔案")
+        self.input_file_path.set(file_path)
+
+    def translate(self):
+        self.translator = Translator(self.model[self.model_var.get()], self.to_language_var.get())
+        self.translator.translate(self.input_file_path.get())
+        return
 
     def run(self):
         self.window.mainloop()
+        pass

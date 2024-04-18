@@ -1,5 +1,6 @@
 from api_client import APIClient, load_api_key
 from translator import Translator
+from ui import TranslationUI
 
 
 def main():
@@ -18,5 +19,11 @@ def main():
         file.write(translated_txt)
 
 
+def test_ui():
+    translation_UI = TranslationUI()
+    translation_UI.run()
+
+
 if __name__ == "__main__":
-    main()
+    test_ui()
+    # main()
