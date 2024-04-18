@@ -1,5 +1,3 @@
-from api_client import APIClient, load_api_key
-from translator import Translator
 from ui import TranslationUI
 
 

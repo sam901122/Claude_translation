@@ -54,6 +54,13 @@ class TranslationUI:
         self.progress_bar = ttk.Progressbar(self.window, length=300, mode="determinate")
         self.progress_bar.pack(pady=5)
 
+        # Stop button
+        self.stop_translation_event = threading.Event()
+        self.stop_btn = tk.Button(
+            self.window, text="停止翻譯", command=self.stop_translation_event.set, state="disabled"
+        )
+        self.stop_btn.pack(pady=5)
+
     def select_input_file(self):
         file_path = filedialog.askopenfilename(title="選擇要翻譯的檔案")
         self.input_file_path.set(file_path)
@@ -65,10 +72,18 @@ class TranslationUI:
 
     def translate(self):
         def translate_thread():
+            print("start translation")
             self.toggle_widgets("disabled")
-            self.translator = Translator(self.model[self.model_var.get()], self.to_language_var.get())
+            self.stop_btn.config(state="normal")
+
+            self.translator = Translator(
+                self.model[self.model_var.get()], self.to_language_var.get(), self.stop_translation_event
+            )
             translated_txt = self.translator.translate(self.input_file_path.get(), self.update_progress)
+
             self.toggle_widgets("normal")
+            self.stop_btn.config(state="disabled")
+            self.stop_translation_event.clear()
 
             with open(
                 self.input_file_path.get().replace(".", f"{self.to_language_var.get()}."), "w", encoding="utf-8"

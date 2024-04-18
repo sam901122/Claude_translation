@@ -4,9 +4,10 @@ from api_client import APIClient, load_api_key
 
 
 class Translator:
-    def __init__(self, model, to_language):
+    def __init__(self, model, to_language, stop_event):
         self.client = APIClient(load_api_key(), model)
         self.to_language = to_language
+        self.stop_event = stop_event
         self.prompt = f"""
         Translate the following text into {self.to_language}.
         Leave the names in original language. 
@@ -31,6 +32,9 @@ class Translator:
         translated_pars = []
 
         for par_index, paragraph in enumerate(paragraphs):
+            if self.stop_event.is_set():
+                break
+
             translated = False
 
             while not translated:

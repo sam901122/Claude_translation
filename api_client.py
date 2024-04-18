@@ -10,13 +10,6 @@ class APIClient:
         self.client = anthropic.Anthropic(api_key=self.api_key)
         self.model = model
 
-        # test
-        res = self.get_response("test")
-        if res:
-            print("API client is ready")
-        else:
-            print("API client is not ready")
-
     def get_response(self, prompt, max_tokens=3000):
         response = self.client.messages.create(
             model=self.model,
@@ -29,12 +22,5 @@ class APIClient:
 
 
 def load_api_key():
-    """
-    Load the API key from the .env file.
-
-    Returns:
-        str: The API key.
-    """
-
     load_dotenv()
     return os.getenv("CLAUDE_API_KEY")
