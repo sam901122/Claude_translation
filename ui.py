@@ -8,7 +8,7 @@ from translator import Translator
 class TranslationUI:
     def __init__(self):
         self.window = tk.Tk()
-        self.window.title("Claude 翻譯機")
+        self.window.title("Claude translator")
         self.window.geometry("800x600")
 
         self.model = {
@@ -25,30 +25,41 @@ class TranslationUI:
 
         # Default values
         self.model_var.set("Haiku")
-        self.to_language_var.set("Traditional Chinese")
+        self.to_language_var.set("繁體中文")
 
         # input_file
-        self.select_file_button = tk.Button(self.window, text="選擇要翻譯的檔案", command=self.select_input_file)
-        self.select_file_button.pack(pady=5)
-        file_entry = tk.Entry(self.window, textvariable=self.input_file_path, width=100)
-        file_entry.pack()
+        input_file_frame = tk.Frame(self.window)
+        input_file_frame.pack(pady=10)
+
+        self.select_file_button = tk.Button(input_file_frame, text="Select file", command=self.select_input_file)
+        self.select_file_button.pack(side=tk.LEFT, padx=5)
+        file_entry = tk.Entry(input_file_frame, textvariable=self.input_file_path, width=100)
+        file_entry.pack(side=tk.LEFT)
 
         # Model
-        self.model_dropdown = tk.OptionMenu(self.window, self.model_var, *(list(self.model.keys())))
-        self.model_dropdown.pack(pady=5)
+        model_frame = tk.Frame(self.window)
+        model_frame.pack(pady=5)
+        model_label = tk.Label(model_frame, text="Translation Model:")
+        model_label.pack(side=tk.LEFT, padx=5)
+        self.model_dropdown = tk.OptionMenu(model_frame, self.model_var, *(list(self.model.keys())))
+        self.model_dropdown.pack(side=tk.LEFT)
 
         # To Language
+        language_frame = tk.Frame(self.window)
+        language_frame.pack(pady=5)
+        language_label = tk.Label(language_frame, text="Target Language:")
+        language_label.pack(side=tk.LEFT, padx=5)
         self.language_choices = [
-            "Traditional Chinese",
+            "繁體中文",
             "English",
         ]
         self.language_dropdown = ttk.Combobox(
-            self.window, textvariable=self.to_language_var, values=self.language_choices
+            language_frame, textvariable=self.to_language_var, values=self.language_choices
         )
-        self.language_dropdown.pack(pady=5)
+        self.language_dropdown.pack(side=tk.LEFT)
 
         # Start translate
-        self.start_btn = tk.Button(self.window, text="開始翻譯", command=self.translate)
+        self.start_btn = tk.Button(self.window, text="Start Translation", command=self.translate)
         self.start_btn.pack(pady=5)
 
         self.progress_bar = ttk.Progressbar(self.window, length=300, mode="determinate")
