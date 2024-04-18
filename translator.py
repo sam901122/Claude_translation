@@ -43,8 +43,7 @@ class Translator:
                     translated = True
 
                     if progress_callback:
-                        progress_callback(par_index + 1, par_cnt)
-                    print(f"Paragraph {par_index+1}/{par_cnt}: {translated_pars[-1][:10]}...")
+                        progress_callback(par_index + 1, par_cnt, translated_pars[-1])
                 except:
                     time.sleep(20)  # Usually is the error of rate limit, wait for 20 seconds and try again
 
