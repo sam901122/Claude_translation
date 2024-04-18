@@ -93,7 +93,7 @@ class TranslationUI:
 
     def stop_translate(self):
         self.stop_translation_event.set()
-        self.progress_info_label.config(text="Translation stopped")
+        self.progress_info_label.config(text="Translation stopping...")
 
     def select_input_file(self):
         file_path = filedialog.askopenfilename(title="Select file", filetypes=[("Text Files", "*.txt")])
