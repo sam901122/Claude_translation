@@ -73,7 +73,7 @@ class TranslationUI:
         self.stop_btn.pack(pady=5)
 
     def select_input_file(self):
-        file_path = filedialog.askopenfilename(title="選擇要翻譯的檔案")
+        file_path = filedialog.askopenfilename(title="Select file", filetypes=[("Text Files", "*.txt")])
         self.input_file_path.set(file_path)
 
     def update_progress(self, current, total):
