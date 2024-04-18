@@ -1,5 +1,6 @@
+import threading
 import tkinter as tk
-from tkinter import filedialog, scrolledtext, ttk
+from tkinter import filedialog, ttk
 
 from translator import Translator
 
@@ -19,9 +20,12 @@ class TranslationUI:
         # Varaibles
         self.input_file_path = tk.StringVar()
         self.model_var = tk.StringVar()
-        self.model_var.set("Haiku")
         self.to_language_var = tk.StringVar()
         self.output_file_name = tk.StringVar()
+
+        # Default values
+        self.model_var.set("Haiku")
+        self.to_language_var.set("Traditional Chinese")
 
         # input_file
         self.select_file_button = tk.Button(self.window, text="選擇要翻譯的檔案", command=self.select_input_file)
@@ -47,14 +51,37 @@ class TranslationUI:
         self.start_btn = tk.Button(self.window, text="開始翻譯", command=self.translate)
         self.start_btn.pack(pady=5)
 
+        self.progress_bar = ttk.Progressbar(self.window, length=300, mode="determinate")
+        self.progress_bar.pack(pady=5)
+
     def select_input_file(self):
         file_path = filedialog.askopenfilename(title="選擇要翻譯的檔案")
         self.input_file_path.set(file_path)
 
+    def update_progress(self, current, total):
+        progress = current / total * 100
+        self.progress_bar["value"] = progress
+        self.window.update_idletasks()
+
     def translate(self):
-        self.translator = Translator(self.model[self.model_var.get()], self.to_language_var.get())
-        self.translator.translate(self.input_file_path.get())
-        return
+        def translate_thread():
+            self.toggle_widgets("disabled")
+            self.translator = Translator(self.model[self.model_var.get()], self.to_language_var.get())
+            translated_txt = self.translator.translate(self.input_file_path.get(), self.update_progress)
+            self.toggle_widgets("normal")
+
+            with open(
+                self.input_file_path.get().replace(".", f"{self.to_language_var.get()}."), "w", encoding="utf-8"
+            ) as file:
+                file.write(translated_txt)
+
+        threading.Thread(target=translate_thread).start()
+
+    def toggle_widgets(self, state):
+        self.select_file_button.config(state=state)
+        self.model_dropdown.config(state=state)
+        self.language_dropdown.config(state=state)
+        self.start_btn.config(state=state)
 
     def run(self):
         self.window.mainloop()

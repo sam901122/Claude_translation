@@ -16,14 +16,12 @@ class Translator:
         
         Here is the paragraph: [[[TP]]]"""
 
-        print("init translator")
-
     def _preprocess(self, txt):
         paragraphs = txt.split("\n\n")
         preprocessed_paragraphs = [p.strip().replace("\n", " ").replace("- ", "") for p in paragraphs if p.strip()]
         return preprocessed_paragraphs
 
-    def translate(self, file_path):
+    def translate(self, file_path, progress_callback=None):
         with open(file_path, "r", encoding="utf-8") as file:
             txt = file.read()
 
@@ -39,6 +37,9 @@ class Translator:
                 try:
                     translated_pars.append(self.client.get_response(self.prompt.replace("[[[TP]]]", paragraph)))
                     translated = True
+
+                    if progress_callback:
+                        progress_callback(par_index + 1, par_cnt)
                     print(f"Paragraph {par_index+1}/{par_cnt}: {translated_pars[-1][:10]}...")
                 except:
                     time.sleep(20)  # Usually is the error of rate limit, wait for 20 seconds and try again
