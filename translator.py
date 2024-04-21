@@ -38,9 +38,11 @@ class Translator:
         self.paragraphs = self._preprocess(self.article)
         self.translated_paragraphs = [None for _ in range(len(self.paragraphs))]
 
-        self.prompt = f"""
-        Translate the following text into {self.to_language}.
-        Leave the names in original language. 
+        self.prompt_template = f"""
+        Here is the context of the article: [[[CTX]]]. 
+        
+        Translate the following paragraph into {self.to_language}.
+        Leave the names in original language.
         The translated text should be in {self.to_language}.
         The response should be the translation only. Do not include other text.
         You must follow the above instructions. Or the result will be poor and ruin my career.
@@ -94,10 +96,15 @@ class Translator:
                 paragraph = self.paragraphs[par_index]
 
                 # Translate the paragraph
+                prompt = self.prompt_template.replace(
+                    "[[[CTX]]]", "\n".join(self.paragraphs[max(0, par_index - 5) : par_index + 5])
+                )
+                prompt = prompt.replace("[[[TP]]]", paragraph)
+
                 translated = False
                 while not translated:
                     try:
-                        translated_paragraph = self.client.get_response(self.prompt.replace("[[[TP]]]", paragraph))
+                        translated_paragraph = self.client.get_response(prompt)
                         self.translated_paragraphs[par_index] = translated_paragraph
                         translated = True
                     except:
