@@ -23,6 +23,9 @@ class TranslationUI:
         self.model = tk.StringVar()
         self.to_language = tk.StringVar()
 
+        # Event
+        self.stop_translation_event = threading.Event()
+
         # Default values
         self.model.set("Haiku")
         self.to_language.set("繁體中文")
@@ -68,7 +71,6 @@ class TranslationUI:
             self.start_btn = tk.Button(translate_frame, text="Start Translation", command=self.translate)
             self.start_btn.pack(side=tk.LEFT)
 
-            self.stop_translation_event = threading.Event()
             self.stop_btn = tk.Button(
                 translate_frame, text="Stop translation", command=self.stop_translate, state="disabled"
             )
@@ -99,36 +101,44 @@ class TranslationUI:
         file_path = filedialog.askopenfilename(title="Select file", filetypes=[("Text Files", "*.txt")])
         self.input_file_path.set(file_path)
 
-    def update_progress(self, current, total, translate_preview):
-        progress = current / total * 100
+    def update_progress(self, translated_cnt, par_cnt, stopped=False, translate_preview=""):
+        progress = translated_cnt / par_cnt * 100
         self.progress_bar["value"] = progress
+
         if self.stop_translation_event.is_set():
-            self.progress_info_label.config(text="Translation stopped")
+            if stopped == False:
+                self.progress_info_label.config(text="Translation stopping...")
+            else:
+                self.progress_info_label.config(text="Translation stopped")
         else:
-            self.progress_info_label.config(text=f"{current}/{total} paragraphs")
+            self.progress_info_label.config(text=f"{translated_cnt}/{par_cnt} paragraphs")
             self.translate_preview.config(text=f"Translated Preview: {translate_preview[:20]}...")
+
         self.window.update_idletasks()
 
     def translate(self):
         def translate_thread():
-            print("start translation")
             self.toggle_widgets("disabled")
             self.stop_btn.config(state="normal")
 
             self.translator = Translator(
-                self.model_name_mapping[self.model.get()], self.to_language.get(), self.stop_translation_event
+                self.model_name_mapping[self.model.get()],
+                self.to_language.get(),
+                self.input_file_path.get(),
+                self.update_progress,
+                self.stop_translation_event,
             )
-            translated_txt = self.translator.translate(self.input_file_path.get(), self.update_progress)
-
-            self.toggle_widgets("normal")
-            self.stop_btn.config(state="disabled")
-            self.stop_translation_event.clear()
+            translated_txt = self.translator.translate()
 
             if not self.stop_translation_event.is_set():
                 with open(
                     self.input_file_path.get().replace(".", f"_{self.to_language.get()}."), "w", encoding="utf-8"
                 ) as file:
                     file.write(translated_txt)
+
+            self.toggle_widgets("normal")
+            self.stop_btn.config(state="disabled")
+            self.stop_translation_event.clear()
 
         threading.Thread(target=translate_thread).start()
 

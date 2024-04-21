@@ -1,24 +1,43 @@
+import threading
 import time
+from queue import Empty, Queue
 
 from api_client import APIClient, load_api_key
 
 
 class Translator:
-    def __init__(self, model: str, to_language: str, stop_event: threading.Event):
+    def __init__(
+        self,
+        model: str,
+        to_language: str,
+        input_file_path: str,
+        progress_callback: callable,
+        stop_event: threading.Event,
+    ):
         """
         Init the Translator
 
         Args:
             model (str): the model name, provided by Anthropic
             to_language (str): the target language. Every language is available, it will be sent to the API
+            input_file_path (str): the input file path
             stop_event (threading.Event): the stop event
+            progress_callback (function): the progress callback function, update the number of paragraphs that have been translated
         Return:
             None
         """
 
         self.client = APIClient(load_api_key(), model)
         self.to_language = to_language
+        self.progress_callback = progress_callback
         self.stop_event = stop_event
+
+        # read article
+        with open(input_file_path, "r", encoding="utf-8") as file:
+            self.article = file.read()
+        self.paragraphs = self._preprocess(self.article)
+        self.translated_paragraphs = [None for _ in range(len(self.paragraphs))]
+
         self.prompt = f"""
         Translate the following text into {self.to_language}.
         Leave the names in original language. 
@@ -27,6 +46,14 @@ class Translator:
         You must follow the above instructions. Or the result will be poor and ruin my career.
         
         Here is the paragraph: [[[TP]]]"""
+
+    @property
+    def translated_cnt(self):
+        return len([p for p in self.translated_paragraphs if p != None])
+
+    @property
+    def paragraph_cnt(self):
+        return len(self.paragraphs)
 
     def _preprocess(self, txt: str):
         """
@@ -46,43 +73,45 @@ class Translator:
         preprocessed_paragraphs = [p.strip().replace("\n", " ").replace("- ", "") for p in paragraphs if p.strip()]
         return preprocessed_paragraphs
 
-    def translate(self, file_path: str, progress_callback: function = None):
-        """
-        Translate the text given the file path
+    def _translate_worker(self, par_index_queue):
+        while self.stop_event.is_set() == False:
+            try:
+                par_index = par_index_queue.get(block=False)
+                paragraph = self.paragraphs[par_index]
 
-        Args:
-            file_path (str): the file path.
-            progress_callback (Callable): the progress callback, execute after each paragraph is translated.
-        Return:
-            str: the translated text. Seperated into paragraphs by "\n\n".
-        """
+                translated = False
+                while not translated:
+                    try:
+                        translated_paragraph = self.client.get_response(self.prompt.replace("[[[TP]]]", paragraph))
+                        self.translated_paragraphs[par_index] = translated_paragraph
+                        translated = True
+                    except:
+                        time.sleep(20)  # Wait for 20 seconds and try again
 
-        # Read the text from the file
-        with open(file_path, "r", encoding="utf-8") as file:
-            txt = file.read()
+                if self.progress_callback:
+                    self.progress_callback(
+                        self.translated_cnt, self.paragraph_cnt, translate_preview=translated_paragraph
+                    )
 
-        # Preprocess the text
-        paragraphs = self._preprocess(txt)
-
-        par_cnt = len(paragraphs)
-        translated_pars = []
-
-        # Translate paragraph by paragraph
-        for par_index, paragraph in enumerate(paragraphs):
-            if self.stop_event.is_set():  # If the translation is stopped, break the loop
+            except Empty:
                 break
 
-            # Keep trying until the translation is successful
-            translated = False
-            while not translated:
-                try:
-                    translated_pars.append(self.client.get_response(self.prompt.replace("[[[TP]]]", paragraph)))
-                    translated = True
+    def translate(self, thread_cnt=5):
+        par_index_queue = Queue()
+        par_index_queue.queue.extend(range(len(self.paragraphs)))
+        threads = []
 
-                    if progress_callback:  # Update the UI
-                        progress_callback(par_index + 1, par_cnt, translated_pars[-1])
-                except:
-                    time.sleep(20)  # Usually is the error of rate limit, wait for 20 seconds and try again
+        for _ in range(thread_cnt):
+            thread = threading.Thread(target=self._translate_worker, args=(par_index_queue,))
+            thread.start()
+            threads.append(thread)
 
-        translated_txt = "\n\n".join(translated_pars)
+        for thread in threads:
+            thread.join()
+
+        if self.stop_event.is_set():
+            self.progress_callback(self.translated_cnt, self.paragraph_cnt, stopped=True)
+            return None
+
+        translated_txt = "\n\n".join(self.translated_paragraphs)
         return translated_txt
