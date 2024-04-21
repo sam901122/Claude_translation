@@ -21,8 +21,8 @@ class Translator:
             model (str): the model name, provided by Anthropic
             to_language (str): the target language. Every language is available, it will be sent to the API
             input_file_path (str): the input file path
+            progress_callback (callable): the progress callback function, update the number of paragraphs that have been translated
             stop_event (threading.Event): the stop event
-            progress_callback (function): the progress callback function, update the number of paragraphs that have been translated
         Return:
             None
         """
@@ -32,7 +32,7 @@ class Translator:
         self.progress_callback = progress_callback
         self.stop_event = stop_event
 
-        # read article
+        # Read article and split into paragraphs
         with open(input_file_path, "r", encoding="utf-8") as file:
             self.article = file.read()
         self.paragraphs = self._preprocess(self.article)
@@ -49,10 +49,12 @@ class Translator:
 
     @property
     def translated_cnt(self):
+        """Return the number of translated paragraphs."""
         return len([p for p in self.translated_paragraphs if p != None])
 
     @property
     def paragraph_cnt(self):
+        """Return the number of paragraphs."""
         return len(self.paragraphs)
 
     def _preprocess(self, txt: str):
@@ -74,11 +76,24 @@ class Translator:
         return preprocessed_paragraphs
 
     def _translate_worker(self, par_index_queue):
+        """
+        The work function for the translation thread.
+        This function will read the paragraph index from the queue, translate the paragraph, and update the translated_paragraphs list.
+
+        Args:
+            par_index_queue (Queue): the queue of paragraph indexes
+        Return:
+            None
+        """
+
+        # Keep translating until the queue is empty or the stop event is set
         while self.stop_event.is_set() == False:
             try:
+                # Get the paragraph
                 par_index = par_index_queue.get(block=False)
                 paragraph = self.paragraphs[par_index]
 
+                # Translate the paragraph
                 translated = False
                 while not translated:
                     try:
@@ -88,6 +103,7 @@ class Translator:
                     except:
                         time.sleep(20)  # Wait for 20 seconds and try again
 
+                # Update the progress bar info
                 if self.progress_callback:
                     self.progress_callback(
                         self.translated_cnt, self.paragraph_cnt, translate_preview=translated_paragraph
@@ -97,21 +113,36 @@ class Translator:
                 break
 
     def translate(self, thread_cnt=5):
+        """
+        Translate the whole article paragraph by paragraph.
+        The implementation is multi-threaded, which means it will translate multiple paragraphs at the same time.
+
+        Args:
+            thread_cnt (int): the number of threads for translation
+        Return:
+            str: the translated text
+        """
+
+        # Prepare the queue of paragraph indexes
         par_index_queue = Queue()
         par_index_queue.queue.extend(range(len(self.paragraphs)))
-        threads = []
 
+        # Start the translation threads
+        threads = []
         for _ in range(thread_cnt):
             thread = threading.Thread(target=self._translate_worker, args=(par_index_queue,))
             thread.start()
             threads.append(thread)
 
+        # Wait for all threads to finish
         for thread in threads:
             thread.join()
 
+        # Check if the translation is stopped
         if self.stop_event.is_set():
             self.progress_callback(self.translated_cnt, self.paragraph_cnt, stopped=True)
             return None
 
+        # Combine the translated paragraphs
         translated_txt = "\n\n".join(self.translated_paragraphs)
         return translated_txt
