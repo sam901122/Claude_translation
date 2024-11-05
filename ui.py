@@ -17,7 +17,7 @@ class TranslationUI:
         # Model name mapping
         self.model_name_mapping = {
             "Haiku": "claude-3-haiku-20240307",
-            "Sonnet": "claude-3-sonnet-20240229",
+            "Sonnet": "claude-3-5-sonnet-20241022",
             "Opus": "claude-3-opus-20240229",
         }
 
